@@ -1,4 +1,4 @@
-### Listomatic Flask Server
+# Listomatic Flask Server
 
 A simple list server to demonstrate a REST API that can be called from
 a front end or a third-party application. Uses the Flask web
