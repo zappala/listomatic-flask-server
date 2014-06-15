@@ -1,6 +1,8 @@
 from config import db
 from models.user import *
 
+from flask.ext.restful import fields
+
 from datetime import datetime
 
 class Item(db.Model):
@@ -15,9 +17,7 @@ class Item(db.Model):
 
     def __init__(self,text):
         self.text = text
-        self.created = datetime.utcnow()
         self.completed = False
-        self.due = datetime.today()
 
     @staticmethod
     def all():
@@ -26,3 +26,11 @@ class Item(db.Model):
     @staticmethod
     def get(id):
         return Item.query.get(id)
+
+    @staticmethod
+    def fields():
+        return {
+            'text': fields.String,
+            'completed': fields.Boolean,
+            'uri': fields.Url('item'),
+        }

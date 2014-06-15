@@ -1,5 +1,5 @@
-from flask import request, abort
-from flask.ext.restful import Resource, Api, reqparse
+from flask import request, abort, g
+from flask.ext.restful import Resource, Api, reqparse, marshal
 
 from config import *
 from models.item import Item
@@ -10,14 +10,17 @@ import re
 
 api = Api(app)
 
-parser = reqparse.RequestParser()
-parser.add_argument('username', type=str, required=True)
-parser.add_argument('password', type=str, required=True)
+user_parser = reqparse.RequestParser()
+user_parser.add_argument('username', type=str, required=True)
+user_parser.add_argument('password', type=str, required=True)
+
+item_parser = reqparse.RequestParser()
+item_parser.add_argument('text', type=str, required=True)
+item_parser.add_argument('completed', type=bool, required=True)
 
 class RegisterAPI(Resource):
     def post(self):
-        args = parser.parse_args()
-        print args
+        args = user_parser.parse_args()
         username = args['username']
         password = args['password']
         # check if username already exists
@@ -31,11 +34,10 @@ class RegisterAPI(Resource):
 
 class LoginAPI(Resource):
     def post(self):
-        args = parser.parse_args()
+        args = user_parser.parse_args()
         username = args['username']
         password = args['password']
         # get user
-        args = parser.parse_args()
         user = User.get(username)
         if not user or not user.check_password(password):
             abort(400)
@@ -48,31 +50,71 @@ def authenticate(func):
     def wrapper(*args, **kwargs):
         if 'Authorization' not in request.headers:
             abort(400)
-        if not User.verify_auth_token(request.headers['Authorization']):
+        user = User.verify_auth_token(request.headers['Authorization'])
+        if not user:
             abort(400)
+        g.user = user
         return func(*args, **kwargs)
     return wrapper
+
+def current_user():
+    return g.user
 
 class AuthResource(Resource):
     method_decorators = [authenticate]
 
-class ItemAPI(AuthResource):
-    def get(self, id):
-        item = Item.get(id)
-        if not item:
-            return {'text': ''}
-        return {'text': Item.get(id).text}
+class ItemsAPI(AuthResource):
+    # @marshal_with(Item.fields())
+    def get(self):
+        # get the user
+        user = g.user
+        items = [i for i in user.items]
+        if items:
+            return {'items': marshal(items,Item.fields())}
+        return {'items': []}
 
-    def put(self, id):
+    def post(self):
+        # get the user
+        user = g.user
         text = request.form['text']
         item = Item(text)
+        item.user = user
         db.session.add(item)
         db.session.commit()
-        return {id: item.id}
+        return marshal(item,Item.fields())
+
+class ItemAPI(AuthResource):
+    def get(self, id):
+        # get the user
+        user = g.user
+        item = Item.get(id)
+        if not item:
+            abort(403)
+        if not item.user == user:
+            abort(403)
+        return marshal(item,Item.fields())
+
+    def put(self, id):
+        args = item_parser.parse_args()
+        text = args['text']
+        completed = args['completed']
+        # get the user
+        user = g.user
+        item = Item.get(id)
+        if not item:
+            abort(403)
+        if not item.user == user:
+            abort(403)
+        item.text = text
+        item.completed = completed
+        db.session.add(item)
+        db.session.commit()
+        return marshal(item,Item.fields())
 
 api.add_resource(RegisterAPI, '/users/register')
 api.add_resource(LoginAPI, '/users/login')
-api.add_resource(ItemAPI, '/items/<string:id>')
+api.add_resource(ItemsAPI, '/items')
+api.add_resource(ItemAPI, '/items/<string:id>',endpoint='item')
 
 if __name__ == '__main__':
     db.create_all()
