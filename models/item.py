@@ -7,7 +7,7 @@ from datetime import datetime
 
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.String(200))
+    title = db.Column(db.String(200))
     created = db.Column(db.DateTime)
     due = db.Column(db.Date)
     completed = db.Column(db.Boolean)
@@ -15,8 +15,8 @@ class Item(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     user = db.relationship('User', backref=db.backref('items', lazy='dynamic'))
 
-    def __init__(self,text):
-        self.text = text
+    def __init__(self,title):
+        self.title = title
         self.completed = False
 
     @staticmethod
@@ -30,7 +30,8 @@ class Item(db.Model):
     @staticmethod
     def fields():
         return {
-            'text': fields.String,
+            'id': fields.Integer,
+            'title': fields.String,
             'completed': fields.Boolean,
             'uri': fields.Url('item'),
         }

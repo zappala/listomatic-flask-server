@@ -15,7 +15,7 @@ user_parser.add_argument('username', type=str, required=True)
 user_parser.add_argument('password', type=str, required=True)
 
 item_parser = reqparse.RequestParser()
-item_parser.add_argument('text', type=str, required=True)
+item_parser.add_argument('title', type=str, required=True)
 item_parser.add_argument('completed', type=bool, required=True)
 
 class RegisterAPI(Resource):
@@ -25,12 +25,12 @@ class RegisterAPI(Resource):
         password = args['password']
         # check if username already exists
         if User.get(username) is not None:
-            abort(400)
+            abort(403)
         user = User(username,password)
         db.session.add(user)
         db.session.commit()
         token = user.generate_auth_token()
-        return { 'token': token }
+        return { 'name':user.name,'token': token }
 
 class LoginAPI(Resource):
     def post(self):
@@ -40,19 +40,19 @@ class LoginAPI(Resource):
         # get user
         user = User.get(username)
         if not user or not user.check_password(password):
-            abort(400)
+            abort(403)
         # generate token
         token = user.generate_auth_token()
-        return { 'token': token }
+        return { 'name':user.name,'token': token }
 
 def authenticate(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if 'Authorization' not in request.headers:
-            abort(400)
+            abort(401)
         user = User.verify_auth_token(request.headers['Authorization'])
         if not user:
-            abort(400)
+            abort(401)
         g.user = user
         return func(*args, **kwargs)
     return wrapper
@@ -76,12 +76,14 @@ class ItemsAPI(AuthResource):
     def post(self):
         # get the user
         user = g.user
-        text = request.form['text']
-        item = Item(text)
+        import json
+        r = json.loads(request.data)
+        title = r['item']['title']
+        item = Item(title)
         item.user = user
         db.session.add(item)
         db.session.commit()
-        return marshal(item,Item.fields())
+        return {'item': marshal(item,Item.fields())}
 
 class ItemAPI(AuthResource):
     def get(self, id):
@@ -96,7 +98,7 @@ class ItemAPI(AuthResource):
 
     def put(self, id):
         args = item_parser.parse_args()
-        text = args['text']
+        title = args['title']
         completed = args['completed']
         # get the user
         user = g.user
@@ -105,11 +107,22 @@ class ItemAPI(AuthResource):
             abort(403)
         if not item.user == user:
             abort(403)
-        item.text = text
+        item.title = title
         item.completed = completed
         db.session.add(item)
         db.session.commit()
         return marshal(item,Item.fields())
+
+    def delete(self,id):
+        user = g.user
+        item = Item.get(id)
+        if not item:
+            abort(403)
+        if not item.user == user:
+            abort(403)
+        db.session.delete(item)
+        db.session.commit()
+        return 200
 
 api.add_resource(RegisterAPI, '/users/register')
 api.add_resource(LoginAPI, '/users/login')
