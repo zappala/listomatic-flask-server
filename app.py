@@ -49,10 +49,10 @@ def authenticate(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if 'Authorization' not in request.headers:
-            abort(401)
+            abort(403);
         user = User.verify_auth_token(request.headers['Authorization'])
         if not user:
-            abort(401)
+            abort(403);
         g.user = user
         return func(*args, **kwargs)
     return wrapper
