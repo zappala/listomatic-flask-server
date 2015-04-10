@@ -10,8 +10,9 @@ class User(db.Model):
     username = db.Column(db.String(255), unique=True, index=True)
     password_hash = db.Column(db.String(255))
 
-    def __init__(self,username,password):
+    def __init__(self,username,name,password):
         self.username = username
+        self.name = name
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):

@@ -14,17 +14,17 @@ class UserTests(unittest.TestCase):
         db.create_all()
 
     def test_registration(self):
-        r = test_app.post('/users/register',data={'name':'Tester','username':'test','password':'test'})
+        r = test_app.post('/api/users/register',data={'name':'Tester','username':'test','password':'test'})
         eq_(r.status_code,200)
         assert 'token' in r.data
         self.token = json.loads(r.data)['token']
 
         # try again
-        r = test_app.post('/users/register',data={'name':'Tester','username':'test','password':'test'})
+        r = test_app.post('/api/users/register',data={'name':'Tester','username':'test','password':'test'})
         eq_(r.status_code,403)
 
     def test_login(self):
-        r = test_app.post('/users/register',data={'username':'test','password':'test'})
+        r = test_app.post('/api/users/register',data={'name':'Tester','username':'test','password':'test'})
         eq_(r.status_code,200)
-        r = test_app.post('/users/login',data={'username':'test','password':'test'},headers={'Authorization':self.token})
+        r = test_app.post('/api/users/login',data={'username':'test','password':'test'},headers={'Authorization':self.token})
         eq_(r.status_code,200)

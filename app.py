@@ -6,13 +6,19 @@ from models.item import Item
 from models.user import User
 
 from functools import wraps
+import json
 import re
 
 api = Api(app)
 
-user_parser = reqparse.RequestParser()
-user_parser.add_argument('username', type=str, required=True)
-user_parser.add_argument('password', type=str, required=True)
+register_parser = reqparse.RequestParser()
+register_parser.add_argument('username', type=str, required=True)
+register_parser.add_argument('name', type=str, required=True)
+register_parser.add_argument('password', type=str, required=True)
+
+login_parser = reqparse.RequestParser()
+login_parser.add_argument('username', type=str, required=True)
+login_parser.add_argument('password', type=str, required=True)
 
 item_parser = reqparse.RequestParser()
 item_parser.add_argument('title', type=str, required=True)
@@ -20,13 +26,14 @@ item_parser.add_argument('completed', type=bool, required=True)
 
 class RegisterAPI(Resource):
     def post(self):
-        args = user_parser.parse_args()
+        args = register_parser.parse_args()
         username = args['username']
+        name = args['name']
         password = args['password']
         # check if username already exists
         if User.get(username) is not None:
             abort(403)
-        user = User(username,password)
+        user = User(username,name,password)
         db.session.add(user)
         db.session.commit()
         token = user.generate_auth_token()
@@ -34,7 +41,7 @@ class RegisterAPI(Resource):
 
 class LoginAPI(Resource):
     def post(self):
-        args = user_parser.parse_args()
+        args = login_parser.parse_args()
         username = args['username']
         password = args['password']
         # get user
@@ -76,7 +83,6 @@ class ItemsAPI(AuthResource):
     def post(self):
         # get the user
         user = g.user
-        import json
         r = json.loads(request.data)
         title = r['item']['title']
         item = Item(title)
@@ -97,9 +103,6 @@ class ItemAPI(AuthResource):
         return marshal(item,Item.fields())
 
     def put(self, id):
-        args = item_parser.parse_args()
-        title = args['title']
-        completed = args['completed']
         # get the user
         user = g.user
         item = Item.get(id)
@@ -107,6 +110,11 @@ class ItemAPI(AuthResource):
             abort(403)
         if not item.user == user:
             abort(403)
+        # load datax
+        r = json.loads(request.data)
+        title = r['item']['title']
+        completed = r['item']['completed']
+        # modify it
         item.title = title
         item.completed = completed
         db.session.add(item)
@@ -124,10 +132,19 @@ class ItemAPI(AuthResource):
         db.session.commit()
         return 200
 
-api.add_resource(RegisterAPI, '/users/register')
-api.add_resource(LoginAPI, '/users/login')
-api.add_resource(ItemsAPI, '/items')
-api.add_resource(ItemAPI, '/items/<string:id>',endpoint='item')
+api.add_resource(RegisterAPI, '/api/users/register')
+api.add_resource(LoginAPI, '/api/users/login')
+api.add_resource(ItemsAPI, '/api/items')
+api.add_resource(ItemAPI, '/api/items/<string:id>',endpoint='item')
+
+@app.route('/')
+def root():
+  return app.send_static_file('index.html')
+
+@app.route('/<path:path>')
+def static_proxy(path):
+  # send_static_file will guess the correct MIME type
+  return app.send_static_file(path)
 
 if __name__ == '__main__':
     db.create_all()
