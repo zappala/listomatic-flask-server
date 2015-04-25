@@ -83,7 +83,8 @@ class ItemsAPI(AuthResource):
     def post(self):
         # get the user
         user = g.user
-        r = json.loads(request.data)
+        # r = json.loads(request.data)
+        r = request.get_json()
         title = r['item']['title']
         item = Item(title)
         item.user = user
@@ -110,8 +111,9 @@ class ItemAPI(AuthResource):
             abort(403)
         if not item.user == user:
             abort(403)
-        # load datax
-        r = json.loads(request.data)
+        # load data
+        # r = json.loads(request.data)
+        r = request.get_json()
         title = r['item']['title']
         completed = r['item']['completed']
         # modify it

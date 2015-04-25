@@ -31,12 +31,13 @@ class ItemTests(unittest.TestCase):
 
         # create an item
         #r = test_app.post('/api/items',data={'text':'todo item 1'},headers=authorization)
-        r = test_app.post('/api/items',data=json.dumps({'item':{'title':'todo item 1'}}),headers=authorization)
+        h = {'Content-Type':'application/json','Authorization':authorization['Authorization']}
+        r = test_app.post('/api/items',data=json.dumps({'item':{'title':'todo item 1'}}),headers=h)
         eq_(r.status_code,200)
 
         # create an item
         #r = test_app.post('/api/items',data={'text':'todo item 2'},headers=authorization)
-        r = test_app.post('/api/items',data=json.dumps({'item':{'title':'todo item 2'}}),headers=authorization)
+        r = test_app.post('/api/items',data=json.dumps({'item':{'title':'todo item 2'}}),headers=h)
         eq_(r.status_code,200)
 
         # get all items
@@ -55,7 +56,7 @@ class ItemTests(unittest.TestCase):
         eq_(r.status_code,403)
 
         # put new info for item
-        r = test_app.put('/api/items/1',data=json.dumps({'item':{'title':'todo item changed','completed':True}}),headers=authorization)
+        r = test_app.put('/api/items/1',data=json.dumps({'item':{'title':'todo item changed','completed':True}}),headers=h)
         eq_(r.status_code,200)
         eq_(json.loads(r.data),{'id':1,'title':'todo item changed','completed':True,'uri':'/api/items/1'})
 
